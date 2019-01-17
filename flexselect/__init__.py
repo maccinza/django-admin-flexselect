@@ -1,11 +1,11 @@
-from collections import defaultdict
+import re
 from itertools import chain
 import hashlib
 import json
 
 from django.forms.widgets import Select
 from django.utils.safestring import mark_safe
-from django.utils.encoding import smart_unicode
+from django.utils.encoding import smart_text
 from django.conf import settings
 from django.core.exceptions import ValidationError, ObjectDoesNotExist
 
@@ -25,10 +25,13 @@ def choices_from_queryset(queryset):
     
     queryset: An instance of django.db.models.query.QuerySet
     """
-    return chain(
-        [EMPTY_CHOICE],
-        [(o.pk, smart_unicode(o)) for o in queryset],
-    )
+    options = [EMPTY_CHOICE]
+    if queryset:
+        options = chain(
+            options,
+            [(o.pk, smart_text(o)) for o in queryset]
+        )
+    return options
 
 def choices_from_instance(instance, widget):
     """
@@ -83,8 +86,6 @@ def instance_from_request(request, widget):
     
 class FlexSelectWidget(Select):
     instances = {}
-    unique_name = None
-    
     """ Instances of widgets with their hashed names as keys."""
     
     class Media:
@@ -111,15 +112,12 @@ class FlexSelectWidget(Select):
         Each widget will be unique by the name of the field and the class name 
         of the model admin.
         """
-        if self.unique_name is not None:
-            return self.unique_name
-        else:
-            salted_string = "".join([
-                  settings.SECRET_KEY,
-                  self.base_field.name,
-                  self.modeladmin.__class__.__name__,
-            ])
-            return "_%s" % hashlib.sha1(salted_string).hexdigest()
+        salted_string = "".join([
+              settings.SECRET_KEY,
+              self.base_field.name, 
+              self.modeladmin.__class__.__name__,         
+        ])
+        return "_%s" % hashlib.sha1(salted_string.encode('utf-8')).hexdigest()
         
     def _get_instance(self):
         """
@@ -128,12 +126,12 @@ class FlexSelectWidget(Select):
         if self.request.method == 'POST':
             return instance_from_request(self.request, self)
         else:
-            try:
-                path = self.request.META['PATH_INFO'].strip('/')
-                object_id = int(path.split('/').pop())
+            path = self.request.path
+            matches = re.findall(r'/(\d+)/', path)
+            if matches:
+                object_id = matches[0]
                 return self.modeladmin.get_object(self.request, object_id)
-            except ValueError:
-                return None
+            return None
     
     def _build_js(self):
         """
@@ -183,5 +181,3 @@ class FlexSelectWidget(Select):
     
     def empty_choices_text(self, instance):
         raise NotImplementedError
-    
-    

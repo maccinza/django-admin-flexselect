@@ -4,3 +4,4 @@ build
 test_project/test_app.sql
 MANIFEST
 dist
+.DS_Store

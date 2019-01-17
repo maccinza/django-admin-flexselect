@@ -25,7 +25,7 @@ flexselect.bind_events = function() {
  * Binds the change event of a base field to the flexselect.ajax() function.
  */
 flexselect.bind_base_field = function(base_field, hashed_name) {
-	flexselect.get_element(base_field).live('change', {
+	flexselect.get_element(base_field).bind('change', {
 		'base_field': base_field,
 		'hashed_name': hashed_name,
 		'success': function(data) {
@@ -33,18 +33,19 @@ flexselect.bind_base_field = function(base_field, hashed_name) {
 		},
 		'data': '&include_options=0',
 	}, flexselect.ajax);
-}
+};
 
 /**
  * Binds the change event of a trigger field to the flexselect.ajax() function.
  */
 flexselect.bind_trigger_field = function(trigger_field, hashed_name, 
 base_field) {
-	flexselect.get_element(trigger_field).live('change', {
+	flexselect.get_element(trigger_field).bind('change', {
 		'base_field': base_field,
 		'hashed_name': hashed_name,
 		'success': function(data) {
-			$(this).html(data.options);
+			let parsedData = JSON.parse(data);
+			$(this).html(parsedData.options);
 			$(this).parent().find('span.flexselect_details').html("");
 			// If jQueryUI is installed, flash the dependent form field row.
 			if (typeof $.ui !== 'undefined') {
